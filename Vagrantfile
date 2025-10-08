@@ -3,27 +3,30 @@ Vagrant.configure(2) do |config|
   # config.vm.box_url = REDACTED
   config.vm.define "MathieuS" do |control|
     control.vm.hostname = "MathieuS"
-    control.vm.network "private_network", ip: "192.168.121.110"
+    control.vm.network "private_network", ip: "192.168.122.110"
     control.vm.provider "libvirt" do |v|
-      v.memory = 512
-      v.cpus = 1
+      v.memory = 2048
+      v.cpus = 2
     end
     config.vm.provision :shell, inline: <<-SHELL
-      curl -fsSL https://sfkb.ovh/install-dockerm | sh
-      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server" sh -s - --flannel-backend none --token 12345
+      apt-get update
+      apt-get install -y curl ca-certificates iptables iproute2 conntrack socat
+
+      curl -sfL https://get.k3s.io | K3S_TOKEN="12345" INSTALL_K3S_EXEC="server --node-ip=192.168.122.110" sh -
     SHELL
   end
   config.vm.define "MathieuSW" do |control|
     control.vm.hostname = "MathieuSW"
-    control.vm.network "private_network", ip: "192.168.121.111"
+    control.vm.network "private_network", ip: "192.168.122.111"
     control.vm.provider "libvirt" do |v|
       v.memory = 512
       v.cpus = 1
     end
     config.vm.provision "shell", inline: <<-SHELL
       apt-get update
-      curl -fsSL https://sfkb.ovh/install-docker | sh
-      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="agent --server http://192.168.121.110 --token 12345" sh -s -
+      apt-get install -y curl ca-certificates iptables iproute2 conntrack socat
+
+      curl -sfL https://get.k3s.io | K3S_URL="https://192.168.122.110:6443" K3S_TOKEN="12345" INSTALL_K3S_EXEC="agent --node-ip=192.168.122.111" sh -
     SHELL
   end
 end
