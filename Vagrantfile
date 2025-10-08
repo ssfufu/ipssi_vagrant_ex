@@ -20,7 +20,7 @@ Vagrant.configure(2) do |config|
       v.cpus = 1
     end
     config.vm.provision "shell", inline: <<-SHELL
-      apt-get update
+      ls
     SHELL
   end
 end
