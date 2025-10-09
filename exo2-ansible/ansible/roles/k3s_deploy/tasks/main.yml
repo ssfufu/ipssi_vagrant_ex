@@ -1,0 +1,29 @@
+- name: Make directory for the manifests
+  file:
+    path: /opt/manifests
+    state: directory
+    mode: "0755"
+
+- name: Copy the manifests from host
+  copy:
+    src: /mnt
+    dest: /opt/manifests
+    owner: root
+    group: root
+    mode: "0644"
+    directory_mode: "0755"
+    remote_src: true
+
+- name: Apply all manifests (recursive)
+  command:
+    cmd: kubectl apply -f /opt/manifests --recursive
+
+- name: Wait for apps to respond
+  ansible.builtin.shell: |
+    curl --max-time 2 -H "Host:{{ item }}" http://192.168.122.110/ >/dev/null
+  register: curl_check
+  retries: 40
+  delay: 3
+  until: curl_check.rc == 0
+  changed_when: false
+  loop: "{{ apps }}"

@@ -1,0 +1,16 @@
+---
+- name: Setup K3S server
+  hosts: servers
+  become: true
+  vars:
+    node_ip: "{{ node_ip }}"
+  roles:
+    - role: k3s_server
+
+- name: Deploy app on K3S server
+  hosts: servers
+  become: true
+  vars:
+    apps: "{{ apps }}"
+  roles:
+    - role: k3s_deploy
