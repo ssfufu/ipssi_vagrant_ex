@@ -1,0 +1,28 @@
+- name: Install K3s server
+  shell: |
+    curl -sfL https://get.k3s.io/ | sh -s - server --write-kubeconfig-mode 644 --node-ip="192.168.122.110"
+  args:
+    creates: /etc/systemd/system/k3s.service
+
+- name: Wait for token to be created
+  wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+    timeout: 60
+
+- name: Copy token to host
+  copy:
+    src: /var/lib/rancher/k3s/server/node-token
+    dest: /mnt/k3s_token
+    remote_src: yes
+
+- name: Copy kubeconfig to host
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /mnt/kubeconfig
+    remote_src: yes
+
+- name: Replace localhost with K3S Server IP in kubeconfig
+  replace:
+    path: /mnt/kubeconfig
+    regexp: "127.0.0.1"
+    replace: "192.168.122.110"

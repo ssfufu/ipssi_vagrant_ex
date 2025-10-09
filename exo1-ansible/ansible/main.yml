@@ -1,0 +1,12 @@
+---
+- name: Setup K3S server
+  hosts: servers
+  become: true
+  roles:
+    - role: k3s_server
+
+- name: Setup K3S agent
+  hosts: agents
+  become: true
+  roles:
+    - role: k3s_agent
