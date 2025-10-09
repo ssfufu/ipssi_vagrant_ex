@@ -1,26 +1,44 @@
-Vagrant.configure(2) do |config|
-  config.vm.box = "generic/debian12"
+NODE_ROLES = ["MathieuS","MathieuSW"]
+NODE_BOXES = ['bento/ubuntu-24.04', 'bento/ubuntu-24.04']
+NODE_CPUS = 1
+NODE_MEMORY = 512
+NETWORK_PREFIX = "192.168.122"
 
-  config.vm.define "MathieuS" do |control|
-    control.vm.hostname = "MathieuS"
-    control.vm.network "private_network", ip: "192.168.122.110"
-    control.vm.synced_folder "./vagrant", "/mnt", create: true, nfs_udp: false
-    control.vm.provider "libvirt" do |v|
-      v.memory = 2048
-      v.cpus = 2
-    end
-    
-    control.vm.provision :shell, path: "k3s-install.sh"
+def provision(vm, role, node_num)
+  vm.box = NODE_BOXES[node_num]
+  vm.hostname = role
+
+  node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
+
+  vm.network "private_network", ip: node_ip, netmask: "255.255.255.0"
+
+  vm.provision "ansible", run: 'once' do |ansible|
+    ansible.compatibility_mode = "2.0"
+    ansible.playbook = "playbooks/site.yml"
+    ansible.groups = {
+      "server" => NODE_ROLES.grep(/^S$/),
+      "agent" => NODE_ROLES.grep(/^SW$/),
+      "k3s_cluster:children" => ["server", "agent"],
+    }
+    ansible.extra_vars = {
+      k3s_version: "v1.31.12+k3s1",
+      api_endpoint: "#{NETWORK_PREFIX}.100",
+      token: "myvagrant",
+      extra_server_args: "--node-external-ip #{node_ip} --flannel-iface virbr0", 
+      extra_agent_args: "--node-external-ip #{node_ip} --flannel-iface virbr0",
+    }
+  end
+end
+
+Vagrant.configure("2") do |config|
+  config.vm.provider "libvirt" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
   end
   
-  config.vm.define "MathieuSW" do |control|
-    control.vm.hostname = "MathieuSW"
-    control.vm.network "private_network", ip: "192.168.122.111"
-    control.vm.synced_folder "./vagrant", "/mnt", create: true, nfs_udp: false
-    control.vm.provider "libvirt" do |v|
-      v.memory = 512
-      v.cpus = 1
+  NODE_ROLES.each_with_index do |name, i|
+    config.vm.define name do |node|
+      provision(node.vm, name, i)
     end
-    control.vm.provision "shell", path: "k3s-agent-install.sh"
   end
 end
